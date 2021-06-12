@@ -1,0 +1,361 @@
+#define _CRT_SECURE_NO_WARNINGS
+#define PAGE_NUM 5
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include <conio.h>
+#include <sqlda.h>
+#include <sqlca.h>
+#include <sqlcpr.h>
+#include < windows.h >
+
+void search_room();
+void select_room();
+void edit_room();
+void room();
+void Insert_Room();
+
+EXEC SQL BEGIN DECLARE SECTION;
+VARCHAR uid[80];
+VARCHAR pwd[20];
+EXEC SQL END DECLARE SECTION;
+
+void room()
+{
+	_putenv("NLS_LANG=American_America.KO16KSC5601");//한글을 사용하기 위한 코드
+	DB_connect();
+	select_room();
+	EXEC SQL COMMIT WORK RELEASE;
+	_getch();
+}
+
+void select_room()
+{
+	clrscr();
+	char move_page = 0;
+	int moving = 10;
+	gotoxy(0,1);
+	print_screen("roomManagement.txt");
+	while(1){
+		gotoxy(20, moving);
+		move_page = _getch();
+		if(move_page == 32){
+			if(moving == 14)
+				moving = 10;
+			else 
+				moving +=2;
+		}
+		else if(move_page == 13){
+			clrscr();
+			if(moving == 10)
+				Insert_Room();
+			else if(moving == 12)
+				search_room();
+			else if(moving == 14)
+				edit_room();
+		}
+	}
+}
+void Insert_Room()
+{
+EXEC SQL BEGIN DECLARE SECTION;
+    varchar r_rnum[6];
+    varchar r_person[4];
+    varchar r_stu_A[15];
+    varchar r_stu_B[15];
+    varchar r_isA[2];
+    varchar r_isB[2];
+
+    char sql[1000];
+
+EXEC SQL END DECLARE SECTION;
+
+   /* Register sql_error() as the error handler. */
+    EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+
+   clrscr();
+
+   print_screen("addRoom.txt");
+   
+   /* 호실 번호 입력 */    
+    while(1) {
+        gotoxy(18,9);
+        gets(r_rnum.arr);
+        r_rnum.len = strlen(r_rnum.arr);
+
+        if(r_rnum.len <= 0 ) {
+            gotoxy(9,21); 
+            printf("호실 번호를 입력하지 않았습니다:)");
+        }
+        else break;
+    }
+ 
+   /* 호실 인원 수 입력 */
+    gotoxy(52,9); 
+    gets(r_person.arr);
+    r_person.len = strlen(r_person.arr);
+  
+   /* A자리 학생 이름 입력 */
+    gotoxy(20,11)  ;
+    gets(r_stu_A.arr);
+    r_stu_A.len = strlen(r_stu_A.arr);
+    
+    /* B자리 학생 이름 입력 */
+    gotoxy(54,11)  ;
+    gets(r_stu_B.arr);
+    r_stu_B.len = strlen(r_stu_B.arr);
+
+   /* A학생 존재 여부 입력 */
+    gotoxy(25,13) ;
+    gets(r_isA.arr);
+    r_isA.len = strlen(r_isA.arr);
+   
+    /* B학생 존재 여부 입력 */
+    gotoxy(59,13) ;
+    gets(r_isB.arr);
+    r_isB.len = strlen(r_isB.arr);
+
+
+    sprintf(sql,"insert into ROOM_MANAGE values ( '%s', %s, '%s', '%s', '%s', '%s')" , r_rnum.arr, r_person.arr, r_stu_A.arr, r_stu_B.arr, r_isA.arr, r_isB.arr);
+
+    gotoxy(40,15) ;
+    printf("sql:%s\n", sql);
+
+   /* 실행시킬 SQL 문장*/
+    EXEC SQL EXECUTE IMMEDIATE :sql ;    
+
+    printf("Insert Success\n");
+    EXEC SQL COMMIT WORK ;
+}
+
+void search_room()
+{
+	/* --------------------------------------------------------------------------
+	   Retrieve the current maximum employee number
+	-------------------------------------------------------------------------- */
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar r_rnum[100];
+	varchar r_person[100];
+	varchar r_stu_a[100];
+	varchar r_stu_b[100];
+	varchar r_isa[100];
+	varchar r_isb[100];
+
+	char dynstmt[1000];
+	EXEC SQL END DECLARE SECTION;
+
+	char no_room[10];
+	char no_page[2];
+
+	int x, y, count = 0, i;
+	int wrong_no = 0;
+
+
+	/* Register sql_error() as the error handler. */
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+
+	while(1){
+		clrscr();
+		gotoxy(0,1);
+		print_screen("searchRoom.txt");
+		if(wrong_no == 0){
+			gotoxy(35, 7);
+		}
+		else {
+			gotoxy(8, 10);
+			printf("없는 호실 번호입니다. 다시 입력해주세요.");
+			gotoxy(35, 7);
+		}
+
+		gets(no_room);
+		gotoxy(15,15);
+		
+		//1부터 49
+		if (no_room[0] > 53 || no_room[1]>49 || (no_room[1]==49 && no_room[2]>48)) {
+			wrong_no = 1;
+		}
+		else {
+			gotoxy(8, 10);
+			printf("                                                                                      ");
+			break;
+		}
+	}
+	/* 사용자 입력 */
+	
+	gotoxy(1, 11);
+	printf(" |  방 번호  | 인원수 |    A    |    B   | A재실 | B재실 |");
+	gotoxy(1, 12);
+	printf(" ---------------------------------------------------------");
+
+
+	/* 실행시킬 SQL 문장*/
+	sprintf(dynstmt, "SELECT * FROM ROOM_MANAGE where to_char(R_RNUM) LIKE '%%%s%%' ", no_room);
+
+	/* select 문장이 제대로 구성되어 있는지 화면에 찍어봄 */
+	//printf("dynstmt:%s\n", dynstmt);
+
+	EXEC SQL PREPARE S FROM : dynstmt;
+
+	/* cursor 선언 */
+	EXEC SQL DECLARE c_cursor CURSOR FOR S;
+
+	/* cursor open */
+	EXEC SQL OPEN c_cursor;
+
+	EXEC SQL WHENEVER NOT FOUND DO break;
+
+	x = 1;
+	y = 13;
+
+	for (;;)
+	{
+		EXEC SQL FETCH c_cursor INTO : r_rnum, : r_person, : r_stu_a, : r_stu_b, : r_isa, : r_isb;
+
+		r_rnum.arr[r_rnum.len] = '\0';
+		r_person.arr[r_person.len] = '\0';
+		r_stu_a.arr[r_stu_a.len] = '\0';
+		r_stu_b.arr[r_stu_b.len] = '\0';
+		r_isa.arr[r_isa.len] = '\0';
+		r_isb.arr[r_isb.len] = '\0';
+		gotoxy(x, y);
+		printf(" |    %s    |    %s   |  %s | %s |   %s   |   %s   |", r_rnum.arr, r_person.arr, r_stu_a.arr, r_stu_b.arr, r_isa.arr, r_isb.arr);
+		y++;
+		count++;
+	}
+	gotoxy(7, 18);
+	printf("(수정 1, 삭제 2, 이전 페이지 3, 종료 4) >> ___ ");
+	gotoxy(51, 18);
+	gets(no_page);
+	if(no_page[0] == 49)
+		edit_room();
+	else if(no_page[0] == 50)
+		printf("삭제 불러오기");
+	else if(no_page[0] == 51)
+		select_room();
+	else if(no_page[0] == 52)
+		exit(1);
+	/* Close the cursor. */
+	EXEC SQL CLOSE c_cursor;
+
+	EXEC SQL COMMIT;
+}
+
+void edit_room()
+{
+	/* --------------------------------------------------------------------------
+	   Retrieve the current maximum employee number
+	-------------------------------------------------------------------------- */
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar R_RNUM[100];
+	varchar R_RPERSON[100];
+	varchar R_STU_A[100];
+	varchar R_STU_B[100];
+	varchar R_ISA[100];
+	varchar R_ISB[100];
+
+	char dynstmt[1000];
+	EXEC SQL END DECLARE SECTION;
+
+	char no_rnum[10];
+	char person[10];
+	char aname[10];
+	char bname[10];
+	char isa[10];
+	char isb[10];
+	char no_page[10];
+
+	int wrong_no = 0;
+
+
+	/* Register sql_error() as the error handler. */
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+	clrscr();
+	gotoxy(0,1);
+	print_screen("updateRoom.txt");
+	gotoxy(40, 5);
+	gets(no_rnum);
+	gotoxy(20, 10);
+
+	/* 실행시킬 SQL 문장*/
+	sprintf(dynstmt, "SELECT * FROM ROOM_MANAGE where to_char(R_RNUM) LIKE '%%%s%%' ", no_rnum);
+
+	/* select 문장이 제대로 구성되어 있는지 화면에 찍어봄 */
+	//printf("dynstmt:%s\n", dynstmt);
+
+	EXEC SQL PREPARE S FROM : dynstmt;
+
+	/* cursor 선언 */
+	EXEC SQL DECLARE c_cursor CURSOR FOR S;
+
+	/* cursor open */
+	EXEC SQL OPEN c_cursor;
+
+
+	for (;;)
+	{
+
+		EXEC SQL WHENEVER NOT FOUND DO break;
+		EXEC SQL FETCH c_cursor INTO : R_RNUM, : R_RPERSON, : R_STU_A, : R_STU_B, : R_ISA, : R_ISB;
+
+		R_RNUM.arr[R_RNUM.len] = '\0';
+		R_RPERSON.arr[R_RPERSON.len] = '\0';
+		R_STU_A.arr[R_STU_A.len] = '\0';
+		R_STU_B.arr[R_STU_B.len] = '\0';
+		R_ISA.arr[R_ISA.len] = '\0';
+		R_ISB.arr[R_ISB.len] = '\0';
+	}
+
+	gotoxy(16, 10);
+	printf("%s", R_RNUM.arr);
+	gotoxy(52, 10);
+	printf("%s", R_RPERSON.arr);
+	gotoxy(18, 12);
+	printf("%s", R_STU_A.arr);
+	gotoxy(54, 12);
+	printf("%s", R_STU_B.arr);
+	gotoxy(23, 14);	
+	printf("%s", R_ISA.arr);
+	gotoxy(59, 14);	
+	printf("%s", R_ISA.arr);
+	/* 사용자 입력 */
+
+	gotoxy(16, 18);
+	gets(no_rnum);
+	gotoxy(52, 18);
+	gets(person);
+	gotoxy(18, 20);
+	gets(aname);
+	gotoxy(54, 20);
+	gets(bname);
+	gotoxy(23, 22);
+	gets(isa);
+	gotoxy(59, 22);
+	gets(isb);
+
+	sprintf(dynstmt,"update ROOM_MANAGE set R_RNUM = '%s', R_RPERSON = '%s', R_STU_A = '%s', R_STU_B = '%s', R_ISA = '%s', R_ISB = '%s' where to_char(R_RNUM) LIKE '%s'  ", no_rnum, person, aname, bname, isa, isb, no_rnum);
+	
+	gotoxy(40, 25);
+	printf("\nstmt:%s\n", dynstmt);
+   
+	EXEC SQL EXECUTE IMMEDIATE :dynstmt ;
+
+	printf("\nUpdate Success\n");
+	EXEC SQL COMMIT WORK ; 
+
+	gotoxy(7, 25);
+	printf("(수정 1, 이전 페이지 2, 종료 3) >> ___ ");
+	gotoxy(51, 25);
+	gets(no_page);
+	if(no_page[0] == 49)
+		edit_room();
+	else if(no_page[0] == 50)
+		select_room();
+	else if(no_page[0] == 51)
+		exit(1);
+	/* Close the cursor. */
+	EXEC SQL CLOSE c_cursor;
+
+	EXEC SQL COMMIT;
+}

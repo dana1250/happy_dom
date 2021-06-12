@@ -1,0 +1,451 @@
+#define _CRT_SECURE_NO_WARNINGS
+#define PAGE_NUM 5
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include <conio.h>
+#include <sqlda.h>
+#include <sqlca.h>
+#include <sqlcpr.h>
+#include < windows.h >
+
+void search_student();
+void select_student();
+void edit_student();
+void insert_student();
+void student();
+
+EXEC SQL BEGIN DECLARE SECTION;
+VARCHAR uid[80];
+VARCHAR pwd[20];
+EXEC SQL END DECLARE SECTION;
+
+void student()
+{
+	_putenv("NLS_LANG=American_America.KO16KSC5601");//한글을 사용하기 위한 코드
+	DB_connect();
+	select_student();
+	EXEC SQL COMMIT WORK RELEASE;
+	_getch();
+}
+
+void select_student()
+{
+	clrscr();
+	char move_page = 0;
+	int moving = 10;
+	gotoxy(0,1);
+	print_screen("main.txt");
+	while(1){
+		gotoxy(20, moving);
+		move_page = _getch();
+		if(move_page == 32){
+			if(moving == 14)
+				moving = 10;
+			else 
+				moving +=2;
+		}
+		else if(move_page == 13){
+			clrscr();
+			if(moving == 10)
+				insert_student();
+			else if(moving == 12)
+				search_student();
+			else if(moving == 14)
+				edit_student();
+		}
+	}
+}
+
+void insert_student() {
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar d_sname[15];
+	varchar d_snum[100];
+	varchar d_major[30];
+	varchar d_goodpoint[4];
+	varchar d_badpoint[4];
+	varchar d_rnum[6];
+	varchar d_rposition[2];
+	varchar d_outdate[2];
+	varchar d_sex[4];
+	varchar d_phonenum[13];
+
+	char sql[1000];
+
+	EXEC SQL END DECLARE SECTION;
+
+	/* Register sql_error() as the error handler. */
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+
+	clrscr();
+	gotoxy(0,1);
+	print_screen("addPerson.txt");
+
+	/* 관생 이름 입력 */
+	while (1) {
+		gotoxy(18, 9);
+		gets(d_sname.arr);
+		d_sname.len = strlen(d_sname.arr);
+		if (d_sname.len <= 0) {
+			gotoxy(9, 21);
+			printf("관생 이름을 입력하지 않았습니다:)");
+		}
+		else break;
+	}
+
+	/* 관생 학번 입력 */
+	while (1) {
+		gotoxy(54, 9);
+		gets(d_snum.arr);
+		d_snum.len = strlen(d_snum.arr);
+		if (d_snum.len < 8) {
+			gotoxy(9, 21);
+			printf("관생 학번은 숫자 8자리입니다:) 넘 적게 입력했오ㅠ");
+		}
+		else {
+			int i;
+			for (i = 0; i < d_snum.len; i++) {
+				if ('0' > d_snum.arr[i] || '9' < d_snum.arr[i]) break;
+			}
+			if (i >= d_snum.len) break;
+			gotoxy(9, 21);
+			printf("관생 학번은 숫자만 입력 할 수 있습니다:) 똑바루 하라구!");
+		}
+	}
+
+	/* 관생 학과 입력 */
+	gotoxy(18, 11);
+	gets(d_major.arr);
+	d_major.len = strlen(d_major.arr);
+
+	/* 관생 상점 입력 */
+	gotoxy(54, 11);
+	gets(d_goodpoint.arr);
+	d_goodpoint.len = strlen(d_goodpoint.arr);
+
+
+	/* 관생 벌점 입력 */
+	gotoxy(18, 13);
+	gets(d_badpoint.arr);
+	d_badpoint.len = strlen(d_badpoint.arr);
+
+	/* 관생 호실 입력 */
+	while (1) {
+		gotoxy(54, 13);
+		gets(d_rnum.arr);
+		d_rnum.len = strlen(d_rnum.arr);
+
+		if (d_rnum.len <= 0) {
+			gotoxy(9, 21);
+			printf("호실 번호를 입력하지 않았습니다:)");
+		}
+		else break;
+	}
+
+	/* 관생 외박 일 수 입력 */
+	while (1) {
+		gotoxy(23, 15);
+		gets(d_outdate.arr);
+		d_outdate.len = strlen(d_outdate.arr);
+
+		if (d_outdate.len == 2) {
+			int tmp = 0;
+			for (int i = 0; i < d_outdate.len; i++) {
+				tmp += (10 * ((d_outdate.len - 1) - i)) * (d_outdate.arr[i] - '0');
+			}
+			if (tmp <= 20) break;
+		}
+		gotoxy(9, 21);
+		printf("외박 일 수는 최대 20일 입니다:)");
+	}
+
+	/* 관생 성별 입력 */
+	gotoxy(54, 15);
+	gets(d_sex.arr);
+	d_sex.len = strlen(d_sex.arr);
+
+	/* 관생 폰번호 입력 */
+	while (1) {
+		gotoxy(27, 17);
+		gets(d_phonenum.arr);
+		d_phonenum.len = strlen(d_phonenum.arr);
+
+		if (d_phonenum.len == 13) {
+			int i;
+			for (i = 0; i < d_phonenum.len; i++) {
+				if (i == 3 || i == 8) continue;
+				if ('0' > d_phonenum.arr[i] || '9' < d_phonenum.arr[i]) break;
+			}
+			if (i >= d_phonenum.len) break;
+		}
+		gotoxy(9, 21);
+		printf("휴대폰 번호 양식이 아닙니다. '010-XXXX-XXXX'형식으로 입력하세요:)");
+	}
+
+	/* 관생 호실 자리 입력 */
+	while (1) {
+		gotoxy(54, 17);
+		gets(d_rposition.arr);
+		d_rposition.len = strlen(d_rposition.arr);
+
+		if (d_rposition.len == 1) {
+			if ('A' <= d_rposition.arr[0] && d_rposition.arr[0] <= 'Z') break;
+		}
+		gotoxy(9, 21);
+		printf("%d", d_rposition.len);
+		printf("호실 자리를 제대로 작성하라구! 'A~Z'사이라구:)");
+	}
+
+	sprintf(sql, "insert into DORM_STUDENTS_MANAGE values ( '%s', TO_NUMBER(%s), '%s', %s, %s, '%s', '%s', %s, '%s', '%s')", d_sname.arr, d_snum.arr, d_major.arr, d_badpoint.arr, d_goodpoint.arr, d_rnum.arr, d_rposition.arr, d_outdate.arr, d_sex.arr, d_phonenum.arr);
+
+	gotoxy(40, 15);
+	printf("sql:%s\n", sql);
+	/* 실행시킬 SQL 문장*/
+	EXEC SQL EXECUTE IMMEDIATE : sql;
+
+	printf("Insert Success\n");
+	EXEC SQL COMMIT WORK;
+}
+
+
+void search_student()
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar D_SNAME[100];
+	varchar D_SNUM[100];
+	varchar D_MAJOR[100];
+	varchar D_BADPOINT[100];
+	varchar D_GOODPOINT[100];
+	varchar D_RNUM[100];
+	varchar D_OUTDATE[100];
+	varchar D_SEX[100];
+	varchar D_PHONENUM[100];
+
+	char dynstmt[1000];
+	EXEC SQL END DECLARE SECTION;
+
+	char no_sname[10];
+	char no_snum[10];
+	char no_rnum[10];
+	char no_page[2];
+	int count = 0,y = 16;
+
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+	clrscr();
+	gotoxy(0,1);
+	print_screen("searchPerson.txt");
+	gotoxy(19, 7);
+	gets(no_sname);
+	gotoxy(46, 7);
+	gets(no_snum);
+	gotoxy(19, 9);
+	gets(no_rnum);
+
+	gotoxy(0, 13);
+	printf(" %s, %s, %s 로 검색한 결과입니다.", no_sname, no_snum, no_rnum);
+	gotoxy(0, 14);
+	printf(" |  이름  | 학번 | 전공 | 벌점 | 상점 | 방번호 | 외박일수 | 성별 | 전화번호 |");
+	gotoxy(1, 15);
+	printf(" ---------------------------------------------------------");
+
+	sprintf(dynstmt, "SELECT * FROM DORM_STUDENTS_MANAGE where to_char(D_SNAME) LIKE '%%%s%%' OR to_char(D_SNUM) LIKE '%%%s%%' OR to_char(D_RNUM) LIKE '%%%s%%' ", no_sname, no_snum, no_rnum);
+
+	/* select 문장이 제대로 구성되어 있는지 화면에 찍어봄 */
+	//printf("dynstmt:%s\n", dynstmt);
+
+	EXEC SQL PREPARE S FROM : dynstmt;
+
+	/* cursor 선언 */
+	EXEC SQL DECLARE c_cursor CURSOR FOR S;
+
+	/* cursor open */
+	EXEC SQL OPEN c_cursor;
+
+	EXEC SQL WHENEVER NOT FOUND DO break;
+	
+	for (;;)
+	{
+		EXEC SQL FETCH c_cursor INTO : D_SNAME, : D_SNUM, : D_MAJOR, : D_BADPOINT, : D_GOODPOINT, : D_RNUM, : D_OUTDATE, : D_SEX, : D_PHONENUM;
+
+		D_SNAME.arr[D_SNAME.len] = '\0';
+		D_SNUM.arr[D_SNUM.len] = '\0';
+		D_MAJOR.arr[D_MAJOR.len] = '\0';
+		D_BADPOINT.arr[D_BADPOINT.len] = '\0';
+		D_GOODPOINT.arr[D_GOODPOINT.len] = '\0';
+		D_RNUM.arr[D_RNUM.len] = '\0';
+		D_OUTDATE.arr[D_OUTDATE.len] = '\0';
+		D_SEX.arr[D_SEX.len] = '\0';
+		D_PHONENUM.arr[D_PHONENUM.len] = '\0';
+		gotoxy(1, y);
+		printf(" | %s | %s | %s | %s | %s | %s | %s | %s | %s |", D_SNAME.arr,D_SNUM.arr,  D_MAJOR.arr, D_BADPOINT.arr, D_GOODPOINT.arr, D_RNUM.arr, D_OUTDATE.arr, D_SEX.arr, D_PHONENUM.arr);
+		y++;
+		count++;
+		if (count == PAGE_NUM) {
+			printf("\n\nhit any key\n");
+			count = 0;
+			_getch();
+			gotoxy(1, 16); //이전 화면 부분 클리어
+			for (int i = 0; i < PAGE_NUM; i++) {
+				printf("                                                                                                                 \n");
+			}
+		}
+		y=16;
+	}
+	gotoxy(7, 25);
+	printf("(수정 1, 삭제 2, 이전 페이지 3, 종료 4) >> ___ ");
+	gotoxy(51, 25);
+	gets(no_page);
+	if(no_page[0] == 49)
+		edit_student();
+	else if(no_page[0] == 50)
+		printf("삭제 불러오기");
+	else if(no_page[0] == 51)
+		select_student();
+	else if(no_page[0] == 52)
+		exit(1);
+	/* Close the cursor. */
+	EXEC SQL CLOSE c_cursor;
+
+	EXEC SQL COMMIT;
+}
+
+void edit_student(){
+	/* --------------------------------------------------------------------------
+	   Retrieve the current maximum employee number
+	-------------------------------------------------------------------------- */
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar D_SNAME[100];
+	varchar D_SNUM[100];
+	varchar D_MAJOR[100];
+	varchar D_BADPOINT[100];
+	varchar D_GOODPOINT[100];
+	varchar D_RNUM[100];
+	varchar D_RPOSITION[100];
+	varchar D_OUTDATE[100];
+	varchar D_SEX[100];
+	varchar D_PHONENUM[100];
+
+	char dynstmt[1000];
+	EXEC SQL END DECLARE SECTION;
+
+	char no_snum[10];
+	char name[10];
+	char major[30];
+	char bad[10];
+	char good[10];
+	char rnum[10];
+	char rposition[10];
+	char outdate[15];
+	char sex[10];
+	char phonenum[15];
+	char no_page[10];
+
+	/* Register sql_error() as the error handler. */
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+	clrscr();
+	gotoxy(0,1);
+	print_screen("updatePerson.txt");
+	gotoxy(37, 5);
+	gets(no_snum);
+	gotoxy(20, 10);
+
+	/* 실행시킬 SQL 문장*/
+	sprintf(dynstmt, "SELECT * FROM DORM_STUDENTS_MANAGE where to_char(D_SNUM) LIKE '%%%s%%' ", no_snum);
+
+	/* select 문장이 제대로 구성되어 있는지 화면에 찍어봄 */
+	//printf("dynstmt:%s\n", dynstmt);
+
+	EXEC SQL PREPARE S FROM : dynstmt;
+
+	/* cursor 선언 */
+	EXEC SQL DECLARE c_cursor CURSOR FOR S;
+
+	/* cursor open */
+	EXEC SQL OPEN c_cursor;
+
+
+	for (;;)
+	{
+		EXEC SQL WHENEVER NOT FOUND DO break;
+		EXEC SQL FETCH c_cursor INTO : D_SNAME, : D_SNUM, : D_MAJOR, : D_BADPOINT, : D_GOODPOINT, : D_RNUM, : D_OUTDATE, : D_SEX, : D_PHONENUM, : D_RPOSITION;
+		D_SNAME.arr[D_SNAME.len] = '\0';
+		D_SNUM.arr[D_SNUM.len] = '\0';
+		D_SEX.arr[D_SEX.len] = '\0';
+		D_MAJOR.arr[D_MAJOR.len] = '\0';
+		D_SEX.arr[D_SEX.len] = '\0';
+		D_GOODPOINT.arr[D_GOODPOINT.len] = '\0';
+		D_BADPOINT.arr[D_BADPOINT.len] = '\0';
+		D_RNUM.arr[D_RNUM.len] = '\0';
+		D_OUTDATE.arr[D_OUTDATE.len] = '\0';
+		D_RPOSITION.arr[D_RPOSITION.len] = '\0';
+		D_PHONENUM.arr[D_PHONENUM.len] = '\0';
+	}
+
+	gotoxy(16, 10);
+	printf("%s", D_SNAME.arr);
+	gotoxy(52, 10);
+	printf("%s", D_SNUM.arr);
+	gotoxy(16, 12);
+	printf("%s", D_SEX.arr);
+	gotoxy(54, 12);
+	printf("%s", D_MAJOR.arr);
+	gotoxy(16, 14);	
+	printf("%s", D_GOODPOINT.arr);
+	gotoxy(52, 14);	
+	printf("%s", D_BADPOINT.arr);
+	gotoxy(16, 16);	
+	printf("%s", D_RNUM.arr);
+	gotoxy(57, 16);	
+	printf("%s", D_OUTDATE.arr);
+	gotoxy(16, 18);	
+	printf("%s", D_RPOSITION.arr);
+	gotoxy(56, 18);	
+	printf("%s", D_PHONENUM.arr);
+	/* 사용자 입력 */
+
+
+	gotoxy(16, 22);
+	gets(name);
+	gotoxy(52, 22);
+	gets(no_snum);
+	gotoxy(18, 24);
+	gets(sex);
+	gotoxy(54, 24);
+	gets(major);
+	gotoxy(23, 26);	
+	gets(good);
+	gotoxy(59, 26);	
+	gets(bad);
+	gotoxy(23, 28);	
+	gets(rnum);
+	gotoxy(59, 28);	
+	gets(outdate);
+	gotoxy(23, 30);	
+	gets(rposition);
+	gotoxy(59, 30);	
+	gets(phonenum);
+
+	sprintf(dynstmt,"update DORM_STUDENTS_MANAGE set D_SNAME = '%s', D_SNUM = '%s', D_SEX = '%s', D_MAJOR = '%s', D_GOODPOINT= '%s', D_BADPOINT = '%s', D_RNUM = '%s', D_OUTDATE = '%s', D_RPOSITION = '%s', D_PHONENUM = '%s' where to_char(D_SNUM) LIKE '%s'  ", name, no_snum, sex, major, good, bad, rnum, outdate, rposition, phonenum, no_snum);
+	
+	EXEC SQL EXECUTE IMMEDIATE :dynstmt ;
+
+	printf("\nUpdate Success\n");
+	EXEC SQL COMMIT WORK ; 
+
+	gotoxy(7, 25);
+	printf("(수정 1, 이전 페이지 2, 종료 3) >> ___ ");
+	gotoxy(51, 25);
+	gets(no_page);
+	if(no_page[0] == 49)
+		edit_student();
+	else if(no_page[0] == 50)
+		select_student();
+	else if(no_page[0] == 51)
+		exit(1);
+	/* Close the cursor. */
+	EXEC SQL CLOSE c_cursor;
+
+	EXEC SQL COMMIT;
+}

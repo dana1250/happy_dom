@@ -1,0 +1,2 @@
+﻿  proctest.c
+c:\users\eleve\documents\db응용\test\proctest.c(154): fatal error C1083: 포함 파일을 열 수 없습니다. 'sqlda.h': No such file or directory

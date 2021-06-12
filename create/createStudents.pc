@@ -1,0 +1,545 @@
+// 마지막고침 : 2020.11.30
+/*-----------------------------------------------
+createStudents.pc
+화면의 특정 위치에서 사용자 입력을 받은 후 테이블에 
+insert 함
+-------------------------------------------------*/
+#define _CRT_SECURE_NO_WARNINGS
+
+//-----------------------------------------
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include <conio.h>
+//#include <regex.h> // 정규표현식 라이브러리 
+
+/* for oracle */
+#include <sqlda.h>
+#include <sqlca.h>
+#include <sqlcpr.h>
+
+//#ifdef WIN32
+#include < windows.h >
+/*---------------  화면 커서 위치 제어 ----------------------*/
+void gotoxy(int x, int y) ;
+void getxy(int *x, int *y) ;
+void clrscr(void) ;
+/*-----------------------------------------------------------*/
+#define getch() _getch()
+
+void print_screen(char fname[]);
+void DB_connect();
+void Insert_Students();
+void Insert_Room();
+void Insert_Menu();
+void Insert_Stayout();
+void rtrim();
+
+void sql_error();
+
+EXEC SQL BEGIN DECLARE SECTION;
+   VARCHAR uid[80];
+   VARCHAR pwd[20];
+EXEC SQL END DECLARE SECTION;
+
+void main()
+{
+   DB_connect();
+   //Insert_Students();
+   //Insert_Room();
+   //Insert_Menu();
+   Insert_Stayout();
+   EXEC SQL COMMIT WORK RELEASE ;
+   getch();
+}
+void DB_connect()
+{
+   /* 아이디와 패스워드 수정해서 넣으세요*/
+    strcpy((char *)uid.arr,"a20183192@//sedb.deu.ac.kr:1521/orcl");
+    uid.len = (short) strlen((char *)uid.arr);
+    strcpy((char *)pwd.arr,"20183192");
+    pwd.len = (short) strlen((char *)pwd.arr);
+
+    EXEC SQL CONNECT :uid IDENTIFIED BY :pwd;
+
+   // connection이 실패했을경우의 처리부분
+
+    if (sqlca.sqlcode != 0 && sqlca.sqlcode != -1405){ 
+      printf("\7Cconnect error: %s", sqlca.sqlerrm.sqlerrmc);
+      getch();
+      exit(-1);
+    }
+
+    printf("Oracle Connect SUCCESS by %s\n", uid.arr);
+}
+
+void Insert_Students()
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar d_sname[15];
+	varchar d_snum[100];
+	varchar d_major[30];
+	varchar d_goodpoint[4];
+	varchar d_badpoint[4];
+	varchar d_rnum[6];
+	varchar d_rposition[2];
+	varchar d_outdate[2];
+	varchar d_sex[4];
+	varchar d_phonenum[13];
+
+	char sql[1000];
+
+	EXEC SQL END DECLARE SECTION;
+
+	/* Register sql_error() as the error handler. */
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+
+	clrscr();
+	gotoxy(0,1);
+	print_screen("addPerson.txt");
+
+	/* 관생 이름 입력 */
+	while (1) {
+		gotoxy(18, 9);
+		gets(d_sname.arr);
+		d_sname.len = strlen(d_sname.arr);
+
+		if (d_sname.len <= 0) {
+			gotoxy(9, 21);
+			printf("관생 이름을 입력하지 않았습니다:)");
+		}
+		else break;
+	}
+
+	/* 관생 학번 입력 */
+	while (1) {
+		gotoxy(54, 9);
+		gets(d_snum.arr);
+		d_snum.len = strlen(d_snum.arr);
+
+		if (d_snum.len < 8) {
+			gotoxy(9, 21);
+			printf("관생 학번은 숫자 8자리입니다:) 넘 적게 입력했오ㅠ");
+		}
+		else {
+			int i;
+			for (i = 0; i < d_snum.len; i++) {
+				if ('0' > d_snum.arr[i] || '9' < d_snum.arr[i]) break;
+			}
+			if (i >= d_snum.len) break;
+			gotoxy(9, 21);
+			printf("관생 학번은 숫자만 입력 할 수 있습니다:) 똑바루 하라구!");
+		}
+	}
+
+
+	/* 관생 학과 입력 */
+	gotoxy(18, 11);
+	gets(d_major.arr);
+	d_major.len = strlen(d_major.arr);
+
+	/* 관생 상점 입력 */
+	gotoxy(54, 11);
+	gets(d_goodpoint.arr);
+	d_goodpoint.len = strlen(d_goodpoint.arr);
+
+
+	/* 관생 벌점 입력 */
+	gotoxy(18, 13);
+	gets(d_badpoint.arr);
+	d_badpoint.len = strlen(d_badpoint.arr);
+
+	/* 관생 호실 입력 */
+	while (1) {
+		gotoxy(54, 13);
+		gets(d_rnum.arr);
+		d_rnum.len = strlen(d_rnum.arr);
+
+		if (d_rnum.len <= 0) {
+			gotoxy(9, 21);
+			printf("호실 번호를 입력하지 않았습니다:)");
+		}
+		else break;
+	}
+
+	/* 관생 외박 일 수 입력 */
+	while (1) {
+		gotoxy(23, 15);
+		gets(d_outdate.arr);
+		d_outdate.len = strlen(d_outdate.arr);
+
+		if (d_outdate.len == 2) {
+			int tmp = 0;
+			for (int i = 0; i < d_outdate.len; i++) {
+				tmp += (10 * ((d_outdate.len - 1) - i)) * (d_outdate.arr[i] - '0');
+			}
+			if (tmp <= 20) break;
+		}
+		gotoxy(9, 21);
+		printf("외박 일 수는 최대 20일 입니다:)");
+	}
+
+	/* 관생 성별 입력 */
+	gotoxy(54, 15);
+	gets(d_sex.arr);
+	d_sex.len = strlen(d_sex.arr);
+
+	/* 관생 폰번호 입력 */
+	while (1) {
+		gotoxy(27, 17);
+		gets(d_phonenum.arr);
+		d_phonenum.len = strlen(d_phonenum.arr);
+
+		if (d_phonenum.len == 13) {
+			int i;
+			for (i = 0; i < d_phonenum.len; i++) {
+				if (i == 3 || i == 8) continue;
+				if ('0' > d_phonenum.arr[i] || '9' < d_phonenum.arr[i]) break;
+			}
+			if (i >= d_phonenum.len) break;
+		}
+		gotoxy(9, 21);
+		printf("휴대폰 번호 양식이 아닙니다. '010-XXXX-XXXX'형식으로 입력하세요:)");
+	}
+
+	/* 관생 호실 자리 입력 */
+	while (1) {
+		gotoxy(54, 17);
+		gets(d_rposition.arr);
+		d_rposition.len = strlen(d_rposition.arr);
+
+		if (d_rposition.len == 1) {
+			if ('A' <= d_rposition.arr[0] && d_rposition.arr[0] <= 'Z') break;
+		}
+		gotoxy(9, 21);
+		printf("%d", d_rposition.len);
+		printf("호실 자리를 제대로 작성하라구! 'A~Z'사이라구:)");
+	}
+
+	sprintf(sql, "insert into DORM_STUDENTS_MANAGE values ('%s', TO_NUMBER(%s), '%s', %s, %s, '%s', '%s', %s, '%s', '%s')", d_sname.arr, d_snum.arr, d_major.arr, d_badpoint.arr, d_goodpoint.arr, d_rnum.arr, d_rposition.arr, d_outdate.arr, d_sex.arr, d_phonenum.arr);
+
+	gotoxy(40, 20);
+	printf("sql:%s\n", sql);
+	/* 실행시킬 SQL 문장*/
+	EXEC SQL EXECUTE IMMEDIATE : sql;
+
+	printf("Insert Success\n");
+	EXEC SQL COMMIT WORK;
+}
+
+void Insert_Room()
+{
+EXEC SQL BEGIN DECLARE SECTION;
+    varchar r_rnum[6];
+    varchar r_person[4];
+    varchar r_stu_A[15];
+    varchar r_stu_B[15];
+    varchar r_isA[2];
+    varchar r_isB[2];
+
+    char sql[1000];
+
+EXEC SQL END DECLARE SECTION;
+
+   /* Register sql_error() as the error handler. */
+    EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+
+   clrscr();
+
+   print_screen("addRoom.txt");
+   
+   /* 호실 번호 입력 */    
+    while(1) {
+        gotoxy(18,9);
+        gets(r_rnum.arr);
+        r_rnum.len = strlen(r_rnum.arr);
+
+        if(r_rnum.len <= 0 ) {
+            gotoxy(9,21); 
+            printf("호실 번호를 입력하지 않았습니다:)");
+        }
+        else break;
+    }
+ 
+   /* 호실 인원 수 입력 */
+    gotoxy(52,9); 
+    gets(r_person.arr);
+    r_person.len = strlen(r_person.arr);
+  
+   /* A자리 학생 이름 입력 */
+    gotoxy(20,11)  ;
+    gets(r_stu_A.arr);
+    r_stu_A.len = strlen(r_stu_A.arr);
+    
+    /* B자리 학생 이름 입력 */
+    gotoxy(54,11)  ;
+    gets(r_stu_B.arr);
+    r_stu_B.len = strlen(r_stu_B.arr);
+
+   /* A학생 존재 여부 입력 */
+    gotoxy(25,13) ;
+    gets(r_isA.arr);
+    r_isA.len = strlen(r_isA.arr);
+   
+    /* B학생 존재 여부 입력 */
+    gotoxy(59,13) ;
+    gets(r_isB.arr);
+    r_isB.len = strlen(r_isB.arr);
+
+
+    sprintf(sql,"insert into ROOM_MANAGE values ( '%s', %s, '%s', '%s', '%s', '%s')" , r_rnum.arr, r_person.arr, r_stu_A.arr, r_stu_B.arr, r_isA.arr, r_isB.arr);
+
+    gotoxy(40,15) ;
+    printf("sql:%s\n", sql);
+
+   /* 실행시킬 SQL 문장*/
+    EXEC SQL EXECUTE IMMEDIATE :sql ;    
+
+    printf("Insert Success\n");
+    EXEC SQL COMMIT WORK ;
+}
+
+void Insert_Menu()
+{
+EXEC SQL BEGIN DECLARE SECTION;
+    varchar c_breakfast[45];
+    varchar c_lunch[45];
+    varchar c_dinner[45];
+    varchar c_date[15];
+    varchar c_price[8];
+
+    char sql[1000];
+
+EXEC SQL END DECLARE SECTION;
+
+   /* Register sql_error() as the error handler. */
+    EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+
+   clrscr();
+
+   print_screen("addMenu.txt");
+   
+   /* 아침 메뉴 입력 */
+    gotoxy(18,8) ;
+    gets(c_breakfast.arr);
+    c_breakfast.len = strlen(c_breakfast.arr);
+    
+ 
+   /* 점심 메뉴 입력 */
+    gotoxy(52,8) ;
+    gets(c_lunch.arr);
+    c_lunch.len = strlen(c_lunch.arr);
+  
+   /* 저녁 메뉴 입력 */
+    gotoxy(18,10) ;
+    gets(c_dinner.arr);
+    c_dinner.len = strlen(c_dinner.arr);
+
+    /* 날짜 입력 */
+    while(1) {
+        gotoxy(48,10);
+        gets(c_date.arr);
+        c_date.len = strlen(c_date.arr);
+
+        if(c_date.len <= 0 ) {
+            gotoxy(9,21); 
+            printf("날짜가 입력되지 않았습니다:)");
+        }
+        else break;
+    }
+    
+
+   /* 가격 입력 */
+    gotoxy(18,12) ;
+    gets(c_price.arr);
+    c_price.len = strlen(c_price.arr);
+   
+    sprintf(sql,"insert into CAFETERIA_MANAGE values ( '%s', '%s', '%s', TO_DATE('%s', 'YYYY-MM-DD'), %s)" , c_breakfast.arr, c_lunch.arr, c_dinner.arr, c_date.arr, c_price.arr);
+
+    gotoxy(40,15) ;
+    printf("sql:%s\n", sql);
+   /* 실행시킬 SQL 문장*/
+    EXEC SQL EXECUTE IMMEDIATE :sql ;    
+
+    printf("Insert Success\n");
+    EXEC SQL COMMIT WORK ;
+}
+
+void Insert_Stayout()
+{
+EXEC SQL BEGIN DECLARE SECTION;
+    varchar s_sname[15];
+    varchar s_snum[8];
+    varchar s_rnum[6];
+    varchar s_apply[2];
+    varchar s_date[15];
+
+    char sql[1000];
+
+EXEC SQL END DECLARE SECTION;
+
+   /* Register sql_error() as the error handler. */
+    EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+
+   clrscr();
+
+   print_screen("addStayout.txt");
+   
+   /* 관생 이름 입력 */
+    while(1) {
+        gotoxy(18,8); 
+        gets(s_sname.arr);
+        s_sname.len = strlen(s_sname.arr);
+
+        if(s_sname.len <= 0 ) {
+            gotoxy(9,21); 
+            printf("관생 이름을 입력하지 않았습니다:)");
+        }
+        else break;
+    }
+ 
+   /* 관생 학번 입력 */
+   while(1) {
+        gotoxy(54,8);
+        gets(s_snum.arr);
+        s_snum.len = strlen(s_snum.arr);
+
+        if(s_snum.len < 8) {
+            gotoxy(9,21); 
+            printf("관생 학번은 숫자 8자리입니다:) 넘 적게 입력했오ㅠ");
+        }
+        else {
+            int i;
+            for(i = 0; i < s_snum.len; i++) {
+                if ('0' > s_snum.arr[i] || '9' < s_snum.arr[i] ) break;
+            }
+            if(i >= s_snum.len) break;
+            gotoxy(9,21);
+            printf("관생 학번은 숫자만 입력 할 수 있습니다:) 똑바루 하라구!");
+        }
+    }
+  
+   /* 관생 호실 입력 */
+    while(1) {
+        gotoxy(18,10);
+        gets(s_rnum.arr);
+        s_rnum.len = strlen(s_rnum.arr);
+
+        if(s_rnum.len <= 0 ) {
+            gotoxy(9,21); 
+            printf("호실 번호를 입력하지 않았습니다:)");
+        }
+        else break;
+    }
+    
+    /* 신청 여부 입력 */
+    while(1) {
+        gotoxy(54,10);
+        gets(s_apply.arr);
+        s_apply.len = strlen(s_apply.arr);
+
+        if(s_apply.len == 1) {
+            if(s_apply.arr[0] == '0' || s_apply.arr[0] == '1') break;
+        }
+        gotoxy(9,21); 
+        printf("신청 여부는 0(신청X), 1(신청) 두 개의 숫자로만 이루어져있습니다:)");
+    }
+
+    /* 날짜 입력 */
+    while(1) {
+        gotoxy(18,12);
+        gets(s_date.arr);
+        s_date.len = strlen(s_date.arr);
+
+        if(s_date.len <= 0 ) {
+            gotoxy(9,21); 
+            printf("날짜가 입력되지 않았습니다:)");
+        }
+        else break;
+    }
+    
+    sprintf(sql,"insert into STAYOUT_MANAGE values ( '%s', %s, '%s', '%s', TO_DATE('%s', 'YYYY-MM-DD'))" , s_sname.arr, s_snum.arr, s_rnum.arr, s_apply.arr, s_date.arr);
+
+    gotoxy(40,15) ;
+    printf("sql:%s\n", sql);
+   /* 실행시킬 SQL 문장*/
+    EXEC SQL EXECUTE IMMEDIATE :sql ;    
+
+    printf("Insert Success\n");
+    EXEC SQL COMMIT WORK ;
+}
+
+void print_screen(char fname[])
+{
+   FILE *fp;
+   char line[100];
+
+   if ( (fp = fopen(fname,"r"))  == NULL ){
+      printf("file open error\n");
+      getch();
+      exit(-1);
+   }
+   while(1)
+   {
+      if( fgets(line, 99, fp) == NULL){
+           break;
+      }
+      printf("%s", line);
+   }
+
+   fclose(fp);
+}
+
+/* --------------------------------------------------------------------------
+void sql_error()
+
+   errrpt prints the ORACLE error msg and number.
+-------------------------------------------------------------------------- */
+void sql_error(char *msg)
+{
+    char err_msg[128];
+    size_t buf_len, msg_len;
+
+    EXEC SQL WHENEVER SQLERROR CONTINUE;
+
+    printf("\n%s\n", msg);
+    buf_len = sizeof (err_msg);
+    sqlglm(err_msg, &buf_len, &msg_len);
+    printf("%.*s\n", msg_len, err_msg);
+
+    getch();
+    EXEC SQL ROLLBACK WORK ;
+
+}
+
+/*---------------  화면 커서 제어 함수 --------------------*/
+#define STD_HANDLE GetStdHandle(STD_OUTPUT_HANDLE)
+
+void gotoxy(int x, int y)
+{
+    COORD Cur= {(SHORT)x, (SHORT) y};
+
+    SetConsoleCursorPosition(STD_HANDLE, Cur);
+}
+
+void getxy(int *x, int *y)
+{
+    CONSOLE_SCREEN_BUFFER_INFO Buf ;
+
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &Buf);
+    *x = (int)Buf.dwCursorPosition.X ;
+    *y = (int)Buf.dwCursorPosition.Y ;
+ 
+}
+
+void clrscr(void)
+{
+    COORD Cur= {0, 0};
+    unsigned long dwLen;
+
+    FillConsoleOutputCharacter(STD_HANDLE, ' ', 80*25, Cur, &dwLen);
+}
+
+/*---------------------------------------------------------*/

@@ -1,0 +1,156 @@
+#define _CRT_SECURE_NO_WARNINGS
+#define PAGE_NUM 5
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include <conio.h>
+#include <sqlda.h>
+#include <sqlca.h>
+#include <sqlcpr.h>
+#include < windows.h >
+
+extern void stayout();
+extern void student();
+extern void menu();
+extern void room();
+
+void gotoxy(int x, int y);
+void getxy(int *x, int *y);
+void clrscr(void);
+void print_screen(char fname[]);
+void DB_connect();
+void sql_error();
+void select_main();
+
+EXEC SQL BEGIN DECLARE SECTION;
+VARCHAR uid[80];
+VARCHAR pwd[20];
+EXEC SQL END DECLARE SECTION;
+
+void main()
+{
+	_putenv("NLS_LANG=American_America.KO16KSC5601");//한글을 사용하기 위한 코드
+	DB_connect();
+	select_main();
+	EXEC SQL COMMIT WORK RELEASE;
+	_getch();
+}
+
+void DB_connect()
+{
+	strcpy((char *)uid.arr, "b2018317@//sedb.deu.ac.kr:1521/orcl");
+	uid.len = (short)strlen((char *)uid.arr);
+	strcpy((char *)pwd.arr, "2018317");
+	pwd.len = (short)strlen((char *)pwd.arr);
+
+	EXEC SQL CONNECT : uid IDENTIFIED BY : pwd;
+
+	if (sqlca.sqlcode != 0 && sqlca.sqlcode != -1405) {
+		printf("Connect error: %s", sqlca.sqlerrm.sqlerrmc);
+		_getch();
+		exit(-1);
+	}
+
+	printf("Oracle Connect SUCCESS by %s\n", uid.arr);
+}
+
+void select_main()
+{
+	clrscr();
+	char move_page = 0;
+	int moving = 10;
+	gotoxy(0,1);
+	print_screen("firstMain.txt");
+	while(1){
+		gotoxy(20, moving);
+		move_page = _getch();
+		if(move_page == 32){
+			if(moving == 16)
+				moving = 10;
+			else 
+				moving +=2;
+		}
+		else if(move_page == 13){
+			clrscr();
+			if(moving == 10)
+				student();
+			else if(moving == 12)
+				stayout();
+			else if(moving == 14)
+				menu();
+			else if(moving == 16)
+				room();
+		}
+	}
+}
+
+void print_screen(char fname[]){
+	FILE *fp;
+	char line[100];
+
+	if ((fp = fopen(fname, "r")) == NULL) {
+		printf("file open error\n");
+		_getch();
+		exit(-1);
+	}
+	while (1)	{
+		if (fgets(line, 99, fp) == NULL) {
+			break;
+		}
+		printf("%s", line);
+	}
+
+	fclose(fp);
+}
+
+/* --------------------------------------------------------------------------
+int sql_error()
+
+	errrpt prints the ORACLE error msg and number.
+-------------------------------------------------------------------------- */
+void sql_error(char *msg)
+{
+	char err_msg[128];
+	size_t buf_len, msg_len;
+
+	EXEC SQL WHENEVER SQLERROR CONTINUE;
+
+	printf("\n%s\n", msg);
+	buf_len = sizeof(err_msg);
+	sqlglm(err_msg, &buf_len, &msg_len);
+	printf("%.*s\n", msg_len, err_msg);
+
+	_getch();
+	EXEC SQL ROLLBACK WORK;
+	//exit(EXIT_FAILURE);
+}
+
+/*---------------  화면 커서 제어 함수 --------------------*/
+#define STD_HANDLE GetStdHandle(STD_OUTPUT_HANDLE)
+
+void gotoxy(int x, int y)
+{
+	COORD Cur = { (SHORT)x, (SHORT)y };
+
+	SetConsoleCursorPosition(STD_HANDLE, Cur);
+}
+
+void getxy(int *x, int *y)
+{
+	CONSOLE_SCREEN_BUFFER_INFO Buf;
+
+	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &Buf);
+	*x = (int)Buf.dwCursorPosition.X;
+	*y = (int)Buf.dwCursorPosition.Y;
+
+}
+
+void clrscr(void)
+{
+	COORD Cur = { 0, 0 };
+	unsigned long dwLen;
+
+	FillConsoleOutputCharacter(STD_HANDLE, ' ', 100 * 50, Cur, &dwLen);
+}

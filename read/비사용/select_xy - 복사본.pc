@@ -1,0 +1,270 @@
+#define _CRT_SECURE_NO_WARNINGS
+#define getch() _getch()
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include <conio.h>
+#include <sqlda.h>
+#include <sqlca.h>
+#include <sqlcpr.h>
+
+#include < windows.h >
+void gotoxy(int x, int y);
+void getxy(int *x, int *y);
+void clrscr(void);
+void print_screen(char fname[]);
+void DB_connect();
+void search_student();
+void sql_error();
+void select_student();
+
+EXEC SQL BEGIN DECLARE SECTION;
+VARCHAR uid[80];
+VARCHAR pwd[20];
+EXEC SQL END DECLARE SECTION;
+
+void main()
+{
+	//한글을 사용하기 위한 코드
+	_putenv("NLS_LANG=American_America.KO16KSC5601");
+	DB_connect();
+	select_student();
+	EXEC SQL COMMIT WORK RELEASE;
+	getch();
+}
+void DB_connect()
+{
+	strcpy((char *)uid.arr, "b2018317@//sedb.deu.ac.kr:1521/orcl");
+	uid.len = (short)strlen((char *)uid.arr);
+	strcpy((char *)pwd.arr, "2018317");
+	pwd.len = (short)strlen((char *)pwd.arr);
+
+	EXEC SQL CONNECT : uid IDENTIFIED BY : pwd;
+
+	// connection이 실패했을경우의 처리부분
+
+	if (sqlca.sqlcode != 0 && sqlca.sqlcode != -1405) {
+		printf("Connect error: %s", sqlca.sqlerrm.sqlerrmc);
+		getch();
+		exit(-1);
+	}
+
+	printf("Oracle Connect SUCCESS by %s\n", uid.arr);
+}
+void select_student()
+{
+	char move_page = 0;
+	int moving = 10;
+	clrscr();
+	gotoxy(0,1);
+	print_screen("main.txt");
+	while(1){
+		gotoxy(29, moving);
+		move_page = getch();
+		if(move_page == 32){
+			if(moving == 16)
+				moving = 10;
+			else 
+				moving +=2;
+		}
+		else if(move_page == 13){
+			if(moving == 10)
+				printf("등록으로 이동");
+			else if(moving == 12)
+				search_student();
+			else if(moving == 12)
+				printf("수정으로 이동");
+			else if(moving == 12)
+				printf("삭제로 이동");
+		}
+	}
+}
+
+#define PAGE_NUM 5
+void search_student()
+{
+	/* --------------------------------------------------------------------------
+	   Retrieve the current maximum employee number
+	-------------------------------------------------------------------------- */
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar D_SNAME[100];
+	varchar D_SNUM[100];
+	varchar D_MAJOR[100];
+	varchar D_BADPOINT[100];
+	varchar D_GOODPOINT[100];
+	varchar D_RNUM[100];
+	varchar D_OUTDATE[100];
+	varchar D_SEX[100];
+	varchar D_PHONENUM[100];
+
+	char dynstmt[1000];
+	EXEC SQL END DECLARE SECTION;
+
+	char no_sname[10];
+	char no_snum[10];
+	char no_rnum[10];
+	char no_page[2];
+
+	int x, y, count = 0, i;
+	int wrong_no = 0;
+
+
+	/* Register sql_error() as the error handler. */
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+	clrscr();
+	gotoxy(0,1);
+	print_screen("searchPerson.txt");
+	gotoxy(19, 7);
+	gets(no_sname);
+	gotoxy(46, 7);
+	gets(no_snum);
+	gotoxy(19, 9);
+	gets(no_rnum);
+	/* 사용자 입력 */
+	gotoxy(0, 13);
+	printf(" %s, %s, %s 로 검색한 결과입니다.", no_sname, no_snum, no_rnum);
+	gotoxy(0, 14);
+	printf(" |  이름  | 학번 | 전공 | 벌점 | 상점 | 방번호 | 외박일수 | 성별 | 전화번호 |");
+	gotoxy(1, 15);
+	printf(" ---------------------------------------------------------");
+
+
+	/* 실행시킬 SQL 문장*/
+	sprintf(dynstmt, "SELECT * FROM DORM_STUDENTS_MANAGE where to_char(D_SNAME) LIKE '%%%s%%' OR to_char(D_SNUM) LIKE '%%%s%%' OR to_char(D_RNUM) LIKE '%%%s%%' ", no_sname, no_snum, no_rnum);
+
+	/* select 문장이 제대로 구성되어 있는지 화면에 찍어봄 */
+	//printf("dynstmt:%s\n", dynstmt);
+
+	EXEC SQL PREPARE S FROM : dynstmt;
+
+	/* cursor 선언 */
+	EXEC SQL DECLARE c_cursor CURSOR FOR S;
+
+	/* cursor open */
+	EXEC SQL OPEN c_cursor;
+
+	EXEC SQL WHENEVER NOT FOUND DO break;
+
+	x = 1;
+	y = 16;
+
+	for (;;)
+	{
+		EXEC SQL FETCH c_cursor INTO : D_SNAME, : D_SNUM, : D_MAJOR, : D_BADPOINT, : D_GOODPOINT, : D_RNUM, : D_OUTDATE, : D_SEX, : D_PHONENUM;
+
+		D_SNAME.arr[D_SNAME.len] = '\0';
+		D_SNUM.arr[D_SNUM.len] = '\0';
+		D_MAJOR.arr[D_MAJOR.len] = '\0';
+		D_BADPOINT.arr[D_BADPOINT.len] = '\0';
+		D_GOODPOINT.arr[D_GOODPOINT.len] = '\0';
+		D_RNUM.arr[D_RNUM.len] = '\0';
+		D_OUTDATE.arr[D_OUTDATE.len] = '\0';
+		D_SEX.arr[D_SEX.len] = '\0';
+		D_PHONENUM.arr[D_PHONENUM.len] = '\0';
+		gotoxy(x, y);
+		printf(" | %s | %s | %s | %s | %s | %s | %s | %s | %s |", D_SNAME.arr,D_SNUM.arr,  D_MAJOR.arr, D_BADPOINT.arr, D_GOODPOINT.arr, D_RNUM.arr, D_OUTDATE.arr, D_SEX.arr, D_PHONENUM.arr);
+		y++;
+		count++;
+		if (count == PAGE_NUM) {
+			printf("\nhit any key\n");
+				count = 0;
+				getch();
+				gotoxy(1, 16); //이전 화면 부분 클리어
+				for (i = 0; i < PAGE_NUM; i++) {
+					printf("                                                                                                                 \n");
+				}
+
+				y = 16;
+			}
+	}
+	gotoxy(7, 25);
+	printf("(수정 1, 삭제 2, 이전 페이지 3, 종료 4) >> ___ ");
+	gotoxy(51, 25);
+	gets(no_page);
+	if(no_page[0] == 49)
+		printf("수정 불러오기");
+	else if(no_page[0] == 50)
+		printf("삭제 불러오기");
+	else if(no_page[0] == 51)
+		select_student();
+	else if(no_page[0] == 52)
+		exit(1);
+	/* Close the cursor. */
+	EXEC SQL CLOSE c_cursor;
+
+	EXEC SQL COMMIT;
+}
+
+	void print_screen(char fname[])
+	{
+		FILE *fp;
+		char line[100];
+
+		if ((fp = fopen(fname, "r")) == NULL) {
+			printf("file open error\n");
+			getch();
+			exit(-1);
+		}
+		while (1)
+		{
+			if (fgets(line, 99, fp) == NULL) {
+				break;
+			}
+			printf("%s", line);
+		}
+
+		fclose(fp);
+	}
+
+	/* --------------------------------------------------------------------------
+	int sql_error()
+
+	   errrpt prints the ORACLE error msg and number.
+	-------------------------------------------------------------------------- */
+	void sql_error(char *msg)
+	{
+		char err_msg[128];
+		size_t buf_len, msg_len;
+
+		EXEC SQL WHENEVER SQLERROR CONTINUE;
+
+		printf("\n%s\n", msg);
+		buf_len = sizeof(err_msg);
+		sqlglm(err_msg, &buf_len, &msg_len);
+		printf("%.*s\n", msg_len, err_msg);
+
+		getch();
+		EXEC SQL ROLLBACK WORK;
+		//exit(EXIT_FAILURE);
+	}
+	/*---------------  화면 커서 제어 함수 --------------------*/
+#define STD_HANDLE GetStdHandle(STD_OUTPUT_HANDLE)
+
+	void gotoxy(int x, int y)
+	{
+		COORD Cur = { (SHORT)x, (SHORT)y };
+
+		SetConsoleCursorPosition(STD_HANDLE, Cur);
+	}
+
+	void getxy(int *x, int *y)
+	{
+		CONSOLE_SCREEN_BUFFER_INFO Buf;
+
+		GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &Buf);
+		*x = (int)Buf.dwCursorPosition.X;
+		*y = (int)Buf.dwCursorPosition.Y;
+
+	}
+
+	void clrscr(void)
+	{
+		COORD Cur = { 0, 0 };
+		unsigned long dwLen;
+
+		FillConsoleOutputCharacter(STD_HANDLE, ' ', 80 * 25, Cur, &dwLen);
+	}
+
+	/*---------------------------------------------------------*/

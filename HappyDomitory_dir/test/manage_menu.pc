@@ -1,0 +1,381 @@
+#define _CRT_SECURE_NO_WARNINGS
+#define PAGE_NUM 5
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include <conio.h>
+#include <sqlda.h>
+#include <sqlca.h>
+#include <sqlcpr.h>
+#include < windows.h >
+
+void search_menu();
+void select_menu();
+void edit_menu();
+void delete_menu();
+void Insert_Menu();
+void menu();
+
+EXEC SQL BEGIN DECLARE SECTION;
+VARCHAR uid[80];
+VARCHAR pwd[20];
+EXEC SQL END DECLARE SECTION;
+
+void menu()
+{
+	_putenv("NLS_LANG=American_America.KO16KSC5601");//한글을 사용하기 위한 코드
+	DB_connect();
+	select_menu();
+	EXEC SQL COMMIT WORK RELEASE;
+	_getch();
+}
+
+void select_menu()
+{
+	clrscr();
+	char move_page = 0;
+	int moving = 10;
+	gotoxy(0,1);
+	print_screen("cafeteriaManagement.txt");
+	while(1){
+		gotoxy(20, moving);
+		move_page = _getch();
+		if(move_page == 32){
+			if(moving == 16)
+				moving = 10;
+			else 
+				moving +=2;
+		}
+		else if(move_page == 13){
+			clrscr();
+			if(moving == 10)
+				Insert_Menu();
+			else if(moving == 12)
+				search_menu();
+			else if(moving == 14)
+				edit_menu();
+			else if(moving == 16)
+				delete_menu();
+		}
+	}
+}
+void Insert_Menu()
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar c_breakfast[45];
+	varchar c_lunch[45];
+	varchar c_dinner[45];
+	varchar c_date[15];
+	varchar c_price[8];
+
+	char sql[1000];
+
+	EXEC SQL END DECLARE SECTION;
+
+	/* Register sql_error() as the error handler. */
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+
+	clrscr();
+	gotoxy(0,1);
+	print_screen("addMenu.txt");
+
+	/* 아침 메뉴 입력 */
+	gotoxy(18, 8);
+	gets(c_breakfast.arr);
+	c_breakfast.len = strlen(c_breakfast.arr);
+
+
+	/* 점심 메뉴 입력 */
+	gotoxy(52, 8);
+	gets(c_lunch.arr);
+	c_lunch.len = strlen(c_lunch.arr);
+
+	/* 저녁 메뉴 입력 */
+	gotoxy(18, 10);
+	gets(c_dinner.arr);
+	c_dinner.len = strlen(c_dinner.arr);
+
+	/* 날짜 입력 */
+	while (1) {
+		gotoxy(48, 10);
+		gets(c_date.arr);
+		c_date.len = strlen(c_date.arr);
+
+		if (c_date.len <= 0) {
+			gotoxy(9, 21);
+			printf("날짜가 입력되지 않았습니다:)");
+		}
+		else break;
+	}
+
+
+	/* 가격 입력 */
+	gotoxy(18, 12);
+	gets(c_price.arr);
+	c_price.len = strlen(c_price.arr);
+
+	sprintf(sql, "insert into CAFETERIA_MANAGE values ( '%s', '%s', '%s', TO_DATE('%s', 'YYYY-MM-DD'), %s)", c_breakfast.arr, c_lunch.arr, c_dinner.arr, c_date.arr, c_price.arr);
+
+	gotoxy(40, 15);
+	//printf("sql:%s\n", sql);
+	/* 실행시킬 SQL 문장*/
+	EXEC SQL EXECUTE IMMEDIATE : sql;
+
+	printf("Insert Success\n");
+	EXEC SQL COMMIT WORK;
+	char no_page[2];
+	gotoxy(7, 25);
+	printf("(수정 1, 이전 페이지 2, 종료 3) >> ___ ");
+	gotoxy(44, 25);
+	gets(no_page);
+	if (no_page[0] == 49)
+		edit_menu();
+	else if (no_page[0] == 50)
+		select_menu();
+	else if (no_page[0] == 51)
+		exit(1);
+}
+void search_menu()
+{
+	/* --------------------------------------------------------------------------
+	   Retrieve the current maximum employee number
+	-------------------------------------------------------------------------- */
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar c_breakfast[100];
+	varchar c_lunch[100];
+	varchar c_dinner[100];
+	varchar c_date[100];
+	varchar c_price[100];
+
+	char dynstmt[1000];
+	EXEC SQL END DECLARE SECTION;
+
+	char no_date[15];
+	char no_page[2];
+
+	int x, y, count = 0, i;
+	int wrong_no = 0;
+
+
+	/* Register sql_error() as the error handler. */
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+	clrscr();
+	gotoxy(0,1);
+	print_screen("searchMenu.txt");
+	gotoxy(30, 8);
+	gets(no_date);
+
+	/* 사용자 입력 */
+	
+	gotoxy(1, 11);
+	printf(" (아침, 점심, 저녁, 날짜, 가격)");
+	gotoxy(1, 12);
+	printf(" ---------------------------------------------------------");
+
+
+	/* 실행시킬 SQL 문장*/
+	sprintf(dynstmt, "SELECT * FROM CAFETERIA_MANAGE where to_char(C_DATE, 'YY/MM/DD') LIKE '%%%s%%' ", no_date);
+
+	/* select 문장이 제대로 구성되어 있는지 화면에 찍어봄 */
+	//printf("dynstmt:%s\n", dynstmt);
+
+	EXEC SQL PREPARE S FROM : dynstmt;
+
+	/* cursor 선언 */
+	EXEC SQL DECLARE c_cursor CURSOR FOR S;
+
+	/* cursor open */
+	EXEC SQL OPEN c_cursor;
+
+	EXEC SQL WHENEVER NOT FOUND DO break;
+
+	x = 1;
+	y = 14;
+
+	for (;;)
+	{
+		EXEC SQL FETCH c_cursor INTO : c_breakfast, : c_lunch, : c_dinner, : c_date, : c_price;
+
+		c_breakfast.arr[c_breakfast.len] = '\0';
+		c_lunch.arr[c_lunch.len] = '\0';
+		c_dinner.arr[c_dinner.len] = '\0';
+		c_date.arr[c_date.len] = '\0';
+		c_price.arr[c_price.len] = '\0';
+		gotoxy(x, y);
+		printf(" |    %s    |    %s   |  %s | %s |   %s   |", c_breakfast.arr, c_lunch.arr, c_dinner.arr, c_date.arr, c_price.arr);
+		y++;
+		count++;
+	}
+	gotoxy(7, 25);
+	printf("(수정 1, 이전 페이지 2, 종료 3) >> ___ ");
+	gotoxy(44, 25);
+	gets(no_page);
+	if (no_page[0] == 49)
+		edit_menu();
+	else if (no_page[0] == 50)
+		select_menu();
+	else if (no_page[0] == 51)
+		exit(1);
+	/* Close the cursor. */
+	EXEC SQL CLOSE c_cursor;
+
+	EXEC SQL COMMIT;
+}
+
+
+
+void edit_menu()
+{
+
+	/* --------------------------------------------------------------------------
+	   Retrieve the current maximum employee number
+	-------------------------------------------------------------------------- */
+	EXEC SQL BEGIN DECLARE SECTION;
+	varchar C_BREAKFAST[100];
+	varchar C_LUNCH[100];
+	varchar C_DINNER[100];
+	varchar C_DATE[100];
+	varchar C_PRICE[100];
+
+	char dynstmt[1000];
+	EXEC SQL END DECLARE SECTION;
+
+	char no_date[10];
+	char breakfast[10];
+	char lunch[10];
+	char dinner[10];
+	char price[10];
+	char no_page[10];
+
+	int wrong_no = 0;
+
+
+	/* Register sql_error() as the error handler. */
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+	clrscr();
+	gotoxy(0,1);
+	print_screen("updateMenu.txt");
+	gotoxy(41, 5);
+	gets(no_date);
+	gotoxy(20, 10);
+
+	/* 실행시킬 SQL 문장*/
+	sprintf(dynstmt, "SELECT * FROM CAFETERIA_MANAGE where to_char(C_DATE, 'YY/MM/DD') LIKE '%%%s%%' ", no_date);
+
+	/* select 문장이 제대로 구성되어 있는지 화면에 찍어봄 */
+	//printf("dynstmt:%s\n", dynstmt);
+
+	EXEC SQL PREPARE S FROM : dynstmt;
+
+	/* cursor 선언 */
+	EXEC SQL DECLARE c_cursor CURSOR FOR S;
+
+	/* cursor open */
+	EXEC SQL OPEN c_cursor;
+
+
+	for (;;)
+	{
+
+		EXEC SQL WHENEVER NOT FOUND DO break;
+		EXEC SQL FETCH c_cursor INTO : C_BREAKFAST, : C_LUNCH, : C_DINNER, : C_DATE, : C_PRICE;
+
+		C_BREAKFAST.arr[C_BREAKFAST.len] = '\0';
+		C_LUNCH.arr[C_LUNCH.len] = '\0';
+		C_DINNER.arr[C_DINNER.len] = '\0';
+		C_DATE.arr[C_DATE.len] = '\0';
+		C_PRICE.arr[C_PRICE.len] = '\0';
+	}
+
+	gotoxy(16, 10);
+	printf("%s", C_BREAKFAST.arr);
+	gotoxy(54, 10);
+	printf("%s", C_LUNCH.arr);
+	gotoxy(16, 12);
+	printf("%s", C_DINNER.arr);
+	gotoxy(48, 12);	
+	printf("%s", C_PRICE.arr);
+	/* 사용자 입력 */
+
+	gotoxy(16, 16);
+	gets(breakfast);
+	gotoxy(54, 16);
+	gets(lunch);
+	gotoxy(16, 18);
+	gets(dinner);
+	gotoxy(48, 18);
+	gets(price);
+
+	sprintf(dynstmt,"update CAFETERIA_MANAGE set c_breakfast = '%s', c_lunch = '%s', c_dinner = '%s', c_price = '%s' where to_char(C_DATE, 'YY/MM/DD') LIKE '%s'  ", breakfast, lunch, dinner, price,no_date);
+	
+	//printf("\nstmt:%s\n", dynstmt);
+   
+	EXEC SQL EXECUTE IMMEDIATE :dynstmt ;
+
+	printf("\nUpdate Success\n");
+	EXEC SQL COMMIT WORK ; 
+
+	gotoxy(7, 25);
+	printf("(수정 1, 이전 페이지 2, 종료 3) >> ___ ");
+	gotoxy(44, 25);
+	gets(no_page);
+	if (no_page[0] == 49)
+		edit_menu();
+	else if (no_page[0] == 50)
+		select_menu();
+	else if (no_page[0] == 51)
+		exit(1);
+	/* Close the cursor. */
+	EXEC SQL CLOSE c_cursor;
+
+	EXEC SQL COMMIT;
+}
+
+void delete_menu()
+{
+	EXEC SQL BEGIN DECLARE SECTION;
+
+	char dynstmt[1000];
+
+	EXEC SQL END DECLARE SECTION;
+
+	char  date[100];
+	char  flag = 'n';
+
+	EXEC SQL WHENEVER SQLERROR DO sql_error("\7ORACLE ERROR:\n");
+	clrscr();
+	gotoxy(0,1);
+	print_screen("deleteMenu.txt");
+	gotoxy(29, 8);
+	gets(date);
+	
+	gotoxy(10, 13);
+	printf("위의 투플들을 삭제하시겠습니까? (y/n) :");
+
+	flag = _getch();
+
+	if (flag == 'y' || flag == 'Y') {
+		sprintf(dynstmt, "DELETE FROM cafeteria_manage WHERE to_char(c_DATE, 'YY/MM/DD') LIKE '%%%s%%'", date);
+		//printf("stmt:%s\n", dynstmt);
+		EXEC SQL EXECUTE IMMEDIATE : dynstmt;
+		gotoxy(24, 15);
+		printf("삭제 성공\n");
+		EXEC SQL COMMIT WORK;
+	}
+	else {
+		printf("삭제를 취소합니다.\n");
+	}
+	char no_page[2];
+	gotoxy(7, 25);
+	printf("(수정 1, 이전 페이지 2, 종료 3) >> ___ ");
+	gotoxy(44, 25);
+	gets(no_page);
+	if (no_page[0] == 49)
+		edit_menu();
+	else if (no_page[0] == 50)
+		select_menu();
+	else if (no_page[0] == 51)
+		exit(1);
+}
